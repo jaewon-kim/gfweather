@@ -26,7 +26,9 @@ public class MainActivity extends AppCompatActivity {
         mBtnStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startService(new Intent(mCtx, MyService.class));
+                Intent iSvc = new Intent(mCtx, MyService.class);
+                iSvc.putExtra("p","main");
+                startService(iSvc);
             }
         });
     }

@@ -51,17 +51,16 @@ public class LockScreenAppActivity extends Activity {
 
 	public void onCreate(Bundle savedInstanceState) {
 
-        super.onCreate(savedInstanceState);
-        getWindow().addFlags(
-            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON|
-            WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD|
-            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED|
-            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON| WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS
-        );
+        setContentView(R.layout.main);
 
-        this.getWindow().setType(WindowManager.LayoutParams.TYPE_KEYGUARD_DIALOG);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+		getWindow().addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+		getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+		getWindow().addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
 
-//        WindowManager.LayoutParams.TYPE_SYSTEM_ERROR,
+
+        getWindow().setType(WindowManager.LayoutParams.TYPE_KEYGUARD_DIALOG);
 
 
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
@@ -71,7 +70,7 @@ public class LockScreenAppActivity extends Activity {
 				| View.SYSTEM_UI_FLAG_FULLSCREEN
 				| View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
 
-        setContentView(R.layout.main);
+
         mRlBackground = (RelativeLayout)findViewById(R.id.rl_relative_bg);
 
         String sdcard = Environment.getExternalStorageDirectory().getAbsolutePath();
@@ -87,11 +86,11 @@ public class LockScreenAppActivity extends Activity {
 
 		try{
 
-		    startService(new Intent(this,MyService.class));
+            Intent iSvc = new Intent(this, MyService.class);
+            iSvc.putExtra("p","lock");
 
-            KeyguardManager km =(KeyguardManager)getSystemService(KEYGUARD_SERVICE);
-		    k1 = km.newKeyguardLock("IN");
-		    k1.disableKeyguard();
+		    startService(iSvc);
+
 
 		    StateListener phoneStateListener = new StateListener();
 		    TelephonyManager telephonyManager =(TelephonyManager)getSystemService(TELEPHONY_SERVICE);
@@ -120,6 +119,9 @@ public class LockScreenAppActivity extends Activity {
                     return true;
                 }
             });
+
+
+			super.onCreate(savedInstanceState);
 
 		}catch (Exception e) {
 			// TODO: handle exception
@@ -173,10 +175,6 @@ public class LockScreenAppActivity extends Activity {
 	   // finish();
 	}
 
-
-
-
-
 	@Override
   public boolean onKeyDown(int keyCode, KeyEvent event) {
 
@@ -197,10 +195,6 @@ public class LockScreenAppActivity extends Activity {
     public void onAttachedToWindow() {
 
 //        this.getWindow().setType(WindowManager.LayoutParams.TYPE_KEYGUARD_DIALOG);
-
-        KeyguardManager keyguardManager = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
-        KeyguardManager.KeyguardLock lock = keyguardManager.newKeyguardLock(KEYGUARD_SERVICE);
-        lock.disableKeyguard();
         super.onAttachedToWindow();
     }
 
