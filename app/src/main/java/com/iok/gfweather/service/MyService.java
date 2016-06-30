@@ -11,8 +11,10 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.IBinder;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.RelativeLayout;
@@ -31,6 +33,8 @@ public class MyService extends Service {
     RelativeLayout mRlBackground;
     Context mContext = null;
 
+    private float mStartX;
+    private float mStartY;
     public MyService() {
     }
 
@@ -110,7 +114,54 @@ public class MyService extends Service {
         mRlBackground.setBackground(Drawable.createFromPath(new File(sdcard,"/gWeather/seulgi.jpeg").getAbsolutePath()));
 
 
+        mLockscreenView.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View view, MotionEvent motionEvent) {
+                switch(motionEvent.getAction()){
+                    case MotionEvent.ACTION_DOWN:
+                        Log.d("gWeather", "action down");
+                        mStartX = motionEvent.getX();
+                        mStartY = motionEvent.getY();
+
+//                            finish();
+                        break;
+
+                    case MotionEvent.ACTION_MOVE:
+                        Log.d("gWeather", "action move");
+                        float fCurrX = motionEvent.getX();
+                        float fCurrY = motionEvent.getY();
+                        double fDistance = Math.sqrt(
+                                Math.pow(fCurrX - mStartX, 2)
+                                + Math.pow(fCurrY - mStartY , 2)
+                        );
+                        Log.d("touch", "distance:::" + fDistance);
+                        if(fDistance > 1000){
+
+                            if (null != mWindowManager && null != mLockscreenView) {
+                                mWindowManager.removeView(mLockscreenView);
+                                mLockscreenView = null;
+                                mWindowManager = null;
+                                stopSelf(0);
+
+                                Log.d("touch", "finished");
+                                LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(MyService.this);
+                                localBroadcastManager.sendBroadcast(new Intent("com.durga.action.close"));
+                                return true;
+                            } else {
+                                Log.d("touch", "finished?????");
+                                return false;
+                            }
+                        }
+                        break;
+                }
+                return true;
+            }
+        });
+
+
         mWindowManager.addView(mLockscreenView, mParams);
+
+
 
         return START_NOT_STICKY;
 //        return super.onStartCommand(intent, flags, startId);
