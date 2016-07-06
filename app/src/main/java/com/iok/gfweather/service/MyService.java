@@ -158,10 +158,7 @@ public class MyService extends Service {
             }
         });
 
-
         mWindowManager.addView(mLockscreenView, mParams);
-
-
 
         return START_NOT_STICKY;
 //        return super.onStartCommand(intent, flags, startId);
