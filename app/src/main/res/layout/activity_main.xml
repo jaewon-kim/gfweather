@@ -27,4 +27,13 @@
         android:text="select google drive folder"
         android:layout_below="@+id/btn_start"
         android:layout_alignParentStart="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="New Text"
+        android:id="@+id/tv_selected_foldername"
+        android:layout_below="@+id/btn_select_google_drive"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true" />
 </RelativeLayout>
