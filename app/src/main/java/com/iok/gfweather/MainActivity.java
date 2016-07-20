@@ -1,6 +1,11 @@
 package com.iok.gfweather;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.drive.Drive;
+import com.google.android.gms.drive.DriveFolder;
+import com.google.android.gms.drive.DriveId;
+import com.google.android.gms.drive.OpenFileActivityBuilder;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GooglePlayServicesAvailabilityIOException;
@@ -14,6 +19,11 @@ import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.drive.DriveScopes;
 
 import com.google.api.services.drive.model.*;
+import com.google.api.services.drive.model.File;
+import com.iok.gfweather.db.DaoMaster;
+import com.iok.gfweather.db.DaoSession;
+import com.iok.gfweather.db.Wallpaper;
+import com.iok.gfweather.service.MyService;
 
 import android.Manifest;
 import android.accounts.AccountManager;
@@ -22,21 +32,28 @@ import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.text.TextUtils;
 import android.text.method.ScrollingMovementMethod;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
-import java.io.IOException;
+import org.greenrobot.greendao.database.Database;
+
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -45,20 +62,36 @@ import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
 
 public class MainActivity extends Activity
-        implements EasyPermissions.PermissionCallbacks {
+        implements EasyPermissions.PermissionCallbacks ,
+        GoogleApiClient.ConnectionCallbacks,
+        GoogleApiClient.OnConnectionFailedListener {
+
+    private static final String TAG = "gfweather";
+
     GoogleAccountCredential mCredential;
     private TextView mOutputText;
     private Button mCallApiButton;
+    private Button mStartKeyGuard;
     ProgressDialog mProgress;
+    Context mCtx;
+
+    private GoogleApiClient mGoogleApiClient;
 
     static final int REQUEST_ACCOUNT_PICKER = 1000;
     static final int REQUEST_AUTHORIZATION = 1001;
     static final int REQUEST_GOOGLE_PLAY_SERVICES = 1002;
     static final int REQUEST_PERMISSION_GET_ACCOUNTS = 1003;
 
+    static final int REQUEST_CODE_RESOLUTION = 1;
+    static final int REQUEST_CODE_OPENER = 2;
+
     private static final String BUTTON_TEXT = "Call Drive API";
     private static final String PREF_ACCOUNT_NAME = "accountName";
-    private static final String[] SCOPES = { DriveScopes.DRIVE_METADATA_READONLY };
+    private static final String[] SCOPES = { DriveScopes.DRIVE_METADATA, DriveScopes.DRIVE_FILE , DriveScopes.DRIVE};
+
+    private static String mFolderResId = "";
+
+    private DaoSession mDaoSession = null;
 
     /**
      * Create the main activity.
@@ -67,49 +100,87 @@ public class MainActivity extends Activity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        LinearLayout activityLayout = new LinearLayout(this);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.MATCH_PARENT);
-        activityLayout.setLayoutParams(lp);
-        activityLayout.setOrientation(LinearLayout.VERTICAL);
-        activityLayout.setPadding(16, 16, 16, 16);
+        mCtx = this;
+        setContentView(R.layout.activity_main);
 
-        ViewGroup.LayoutParams tlp = new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
+//        DaoMaster.DevOpenHelper helper = new DaoMaster.DevOpenHelper(this, ENCRYPTED ? "notes-db-encrypted" : "notes-db");
 
-        mCallApiButton = new Button(this);
-        mCallApiButton.setText(BUTTON_TEXT);
+
+        DaoMaster.DevOpenHelper helper  = new DaoMaster.DevOpenHelper(this, "wallpaper-db", null);
+        Database db =  helper.getWritableDb();
+
+        mDaoSession = new DaoMaster(db).newSession();
+
+
+        mStartKeyGuard = (Button)findViewById(R.id.btn_start);
+        mStartKeyGuard.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent iSvc = new Intent(mCtx, MyService.class);
+                iSvc.putExtra("p","main");
+                startService(iSvc);
+            }
+        });
+
+
+        mCallApiButton = (Button)findViewById(R.id.btn_select_google_drive);
+
         mCallApiButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mCallApiButton.setEnabled(false);
-                mOutputText.setText("");
-                getResultsFromApi();
-                mCallApiButton.setEnabled(true);
+
+//                mCallApiButton.setEnabled(false);
+//                mOutputText.setText("");
+//                getResultsFromApi();
+//                mCallApiButton.setEnabled(true);
+//
+                if(mGoogleApiClient.isConnected() == true){
+                    IntentSender intentSender = Drive.DriveApi
+                            .newOpenFileActivityBuilder()
+                            .setMimeType(new String[]{DriveFolder.MIME_TYPE})
+                            .build(mGoogleApiClient);
+
+                    try {
+                        startIntentSenderForResult(intentSender, REQUEST_CODE_OPENER, null, 0,0,0);
+                    } catch (IntentSender.SendIntentException e) {
+                        e.printStackTrace();
+                    }
+                }
+                else{
+                    Toast.makeText(mCtx, "Wait a minute for Connect", Toast.LENGTH_SHORT).show();
+                }
+
+
             }
         });
-        activityLayout.addView(mCallApiButton);
 
-        mOutputText = new TextView(this);
-        mOutputText.setLayoutParams(tlp);
-        mOutputText.setPadding(16, 16, 16, 16);
-        mOutputText.setVerticalScrollBarEnabled(true);
-        mOutputText.setMovementMethod(new ScrollingMovementMethod());
-        mOutputText.setText(
-                "Click the \'" + BUTTON_TEXT +"\' button to test the API.");
-        activityLayout.addView(mOutputText);
+        mOutputText = (TextView)findViewById(R.id.tv_output_text);
 
         mProgress = new ProgressDialog(this);
         mProgress.setMessage("Calling Drive API ...");
 
-        setContentView(activityLayout);
+//        setContentView(activityLayout);
 
         // Initialize credentials and service object.
         mCredential = GoogleAccountCredential.usingOAuth2(
                 getApplicationContext(), Arrays.asList(SCOPES))
                 .setBackOff(new ExponentialBackOff());
+
+        if (mGoogleApiClient == null) {
+            // Create the API client and bind it to an instance variable.
+            // We use this instance as the callback for connection and connection
+            // failures.
+            // Since no account name is passed, the user is prompted to choose.
+            mGoogleApiClient = new GoogleApiClient.Builder(this)
+                    .addApi(Drive.API)
+                    .addScope(Drive.SCOPE_FILE)
+                    .addScope(Drive.SCOPE_APPFOLDER) // required for App Folder sample
+                    .addConnectionCallbacks(this)
+                    .addOnConnectionFailedListener(this)
+                    .build();
+        }
+        // Connect the client. Once connected, the camera is launched.
+        mGoogleApiClient.connect();
     }
 
 
@@ -213,6 +284,21 @@ public class MainActivity extends Activity
                     getResultsFromApi();
                 }
                 break;
+            case REQUEST_CODE_OPENER:
+                if(resultCode == RESULT_OK){
+                    DriveId driveId = (DriveId) data.getParcelableExtra(
+                            OpenFileActivityBuilder.EXTRA_RESPONSE_DRIVE_ID);
+
+                    Log.i(TAG, "id::::"+  driveId.toString() +":::0ByjZJ_SWUP5ZaDNNVkVMMkgybms");
+                    Log.i(TAG, "id::::"+  driveId.getResourceId()  +":::0ByjZJ_SWUP5ZaDNNVkVMMkgybms");
+                    mFolderResId = driveId.getResourceId();
+
+                    mCallApiButton.setEnabled(false);
+                    mOutputText.setText("");
+                    getResultsFromApi();
+                    mCallApiButton.setEnabled(true);
+                }
+                break;
         }
     }
 
@@ -312,6 +398,31 @@ public class MainActivity extends Activity
         dialog.show();
     }
 
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        Log.i(TAG, "GoogleApiClient connection failed: " + connectionResult.toString());
+        if (!connectionResult.hasResolution()) {
+            // show the localized error dialog.
+            GoogleApiAvailability.getInstance().getErrorDialog(this, connectionResult.getErrorCode(), 0).show();
+            return;
+        }
+        try {
+            connectionResult.startResolutionForResult(this, REQUEST_CODE_RESOLUTION);
+        } catch (IntentSender.SendIntentException e) {
+            Log.e(TAG, "Exception while starting resolution activity", e);
+        }
+    }
+
     /**
      * An asynchronous task that handles the Drive API call.
      * Placing the API calls in their own task ensures the UI stays responsive.
@@ -354,17 +465,18 @@ public class MainActivity extends Activity
             // Get a list of up to 10 files.
             List<String> fileInfo = new ArrayList<String>();
 
-
+//            mFolderResId = "0ByjZJ_SWUP5ZaDNNVkVMMkgybms";
             FileList result = mService.files().list()
-                    .setQ("'0ByjZJ_SWUP5ZaDNNVkVMMkgybms' in parents") // list file in specified folder
+                    .setQ("'"+mFolderResId+"' in parents") // list file in specified folder
                     .setPageSize(10)
-                    .setFields("nextPageToken, files(name)")
+                    .setFields("nextPageToken, files(name,id)")
                     .execute();
 
 
 //            FileList result = mService.files().list()
 //                    .setMaxResults(10)
 //                    .execute();
+            mDaoSession.getWallpaperDao().deleteAll();
 
             List<File> files = result.getFiles();
             if (files != null) {
@@ -372,7 +484,21 @@ public class MainActivity extends Activity
                     fileInfo.add(String.format("%s (%s)\n",
                             file.getName(), file.getId()));
 
+                    String folder = Environment.getExternalStorageDirectory().getAbsolutePath() + "/gWeather/";
 
+                    String path = folder + file.getName();
+                    java.io.File saveFile = new java.io.File(path);
+
+                    String fileId = file.getId();//"0BwwA4oUTeiV1UVNwOHItT0xfa2M";
+                    OutputStream outputStream = new FileOutputStream(saveFile);
+                    mService.files().get(fileId)
+                            .executeMediaAndDownloadTo(outputStream);
+
+                    outputStream.flush();
+                    outputStream.close();
+
+                    Wallpaper wallpaper = new Wallpaper(null, path);
+                    mDaoSession.getWallpaperDao().insert(wallpaper);
                 }
             }
             return fileInfo;

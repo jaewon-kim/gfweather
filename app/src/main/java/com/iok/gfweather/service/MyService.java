@@ -20,9 +20,16 @@ import android.view.WindowManager;
 import android.widget.RelativeLayout;
 
 import com.iok.gfweather.R;
+import com.iok.gfweather.db.DaoMaster;
+import com.iok.gfweather.db.DaoSession;
+import com.iok.gfweather.db.Wallpaper;
+import com.iok.gfweather.db.WallpaperDao;
 import com.iok.gfweather.receiver.LockScreenReceiver;
 
+import org.greenrobot.greendao.database.Database;
+
 import java.io.File;
+import java.util.List;
 
 public class MyService extends Service {
     BroadcastReceiver mReceiver;
@@ -32,6 +39,9 @@ public class MyService extends Service {
     private View mLockscreenView = null;
     RelativeLayout mRlBackground;
     Context mContext = null;
+    String TAG = "MyService";
+
+    DaoSession mDaoSession;
 
     private float mStartX;
     private float mStartY;
@@ -60,6 +70,11 @@ public class MyService extends Service {
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         mReceiver = new LockScreenReceiver();
         registerReceiver(mReceiver, filter);
+
+        DaoMaster.DevOpenHelper helper  = new DaoMaster.DevOpenHelper(this, "wallpaper-db", null);
+        Database db =  helper.getWritableDb();
+
+        mDaoSession = new DaoMaster(db).newSession();
 
         super.onCreate();
     }
@@ -110,8 +125,15 @@ public class MyService extends Service {
 
         mRlBackground = (RelativeLayout)mLockscreenView.findViewById(R.id.rl_relative_bg);
 
+
+        List<Wallpaper> wallpapers = mDaoSession.getWallpaperDao().loadAll();
+
+        Log.i(TAG, "Wallpaper Count:::" + wallpapers.size());
+
+        int randomIdx = (int)(Math.random()*10)% wallpapers.size();
+
         String sdcard = Environment.getExternalStorageDirectory().getAbsolutePath();
-        mRlBackground.setBackground(Drawable.createFromPath(new File(sdcard,"/gWeather/seulgi.jpeg").getAbsolutePath()));
+        mRlBackground.setBackground(Drawable.createFromPath(new File(wallpapers.get(randomIdx).getPath()).getAbsolutePath()));
 
 
         mLockscreenView.setOnTouchListener(new View.OnTouchListener() {
