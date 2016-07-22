@@ -14,6 +14,8 @@ public class Main {
 
         wallpaper.addIdProperty();
         wallpaper.addStringProperty("path");
+        wallpaper.addStringProperty("exifdate");
+        wallpaper.addStringProperty("weather");
 
         DaoGenerator dg = new DaoGenerator();
         dg.generateAll(schema, "./app/src/main/java");
