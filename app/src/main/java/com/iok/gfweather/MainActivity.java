@@ -16,6 +16,7 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.ExponentialBackOff;
 
+import com.google.api.client.util.StringUtils;
 import com.google.api.services.drive.DriveScopes;
 
 import com.google.api.services.drive.model.*;
@@ -24,16 +25,19 @@ import com.iok.gfweather.db.DaoMaster;
 import com.iok.gfweather.db.DaoSession;
 import com.iok.gfweather.db.Wallpaper;
 import com.iok.gfweather.service.MyService;
+import com.iok.gfweather.util.WeatherApiHelper;
 
 import android.Manifest;
 import android.accounts.AccountManager;
 import android.app.Activity;
 import android.app.Dialog;
 import android.app.ProgressDialog;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.SharedPreferences;
+import android.media.ExifInterface;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
@@ -72,6 +76,11 @@ public class MainActivity extends Activity
     private TextView mOutputText;
     private Button mCallApiButton;
     private Button mStartKeyGuard;
+
+    private Button mBtnExifTest;// for Test;;;
+
+    private String mStrHttpRes; //for Test;
+
     ProgressDialog mProgress;
     Context mCtx;
 
@@ -129,11 +138,6 @@ public class MainActivity extends Activity
             @Override
             public void onClick(View v) {
 
-//                mCallApiButton.setEnabled(false);
-//                mOutputText.setText("");
-//                getResultsFromApi();
-//                mCallApiButton.setEnabled(true);
-//
                 if(mGoogleApiClient.isConnected() == true){
                     IntentSender intentSender = Drive.DriveApi
                             .newOpenFileActivityBuilder()
@@ -151,6 +155,24 @@ public class MainActivity extends Activity
                 }
 
 
+            }
+        });
+
+        mBtnExifTest = (Button)findViewById(R.id.btn_exif_test);
+
+        mBtnExifTest.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                List<Wallpaper> listWallpaper = mDaoSession.getWallpaperDao().loadAll();
+                for(Wallpaper item : listWallpaper){
+                    try{
+
+
+                        return;
+                    }catch(Exception e){
+                        e.printStackTrace();
+                    }
+                }
             }
         });
 
@@ -423,6 +445,56 @@ public class MainActivity extends Activity
         }
     }
 
+    private class WeatherRetrieveTask extends AsyncTask<Void, Void, Void>{
+
+        public ContentValues cvParams;
+
+        public String weather;
+        public String filePath;
+        public String dateTime;
+
+        public WeatherRetrieveTask() {
+            super();
+        }
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            Wallpaper wallpaper = new Wallpaper(null, filePath,dateTime,weather);
+            mDaoSession.getWallpaperDao().insert(wallpaper);
+            super.onPostExecute(aVoid);
+        }
+
+
+        @Override
+        protected Void doInBackground(Void... params) {
+
+            try{
+                if(cvParams == null)
+                    return null;
+
+                String httpRes = WeatherApiHelper.getWeather(
+                        cvParams.getAsString(com.iok.gfweather.util.StringUtils.KEY_CV_YEAR),
+                        cvParams.getAsString(com.iok.gfweather.util.StringUtils.KEY_CV_MONTH),"");
+                weather= WeatherApiHelper.getWeatherByDate(
+                        httpRes,
+                        cvParams.getAsString(com.iok.gfweather.util.StringUtils.KEY_CV_MONTH_DAY)
+                        );
+
+                Log.i(TAG, "RTN_WEATHER::::" + weather);
+            }
+            catch (Exception e){
+                e.printStackTrace();
+            }
+
+            return null;
+        }
+    }
+
     /**
      * An asynchronous task that handles the Drive API call.
      * Placing the API calls in their own task ensures the UI stays responsive.
@@ -497,8 +569,20 @@ public class MainActivity extends Activity
                     outputStream.flush();
                     outputStream.close();
 
-                    Wallpaper wallpaper = new Wallpaper(null, path);
-                    mDaoSession.getWallpaperDao().insert(wallpaper);
+
+                    ExifInterface ifExif = new ExifInterface(path);
+                    String strDateTime = ifExif.getAttribute(ExifInterface.TAG_DATETIME);
+
+                    if(strDateTime != null){
+                        WeatherRetrieveTask task = new WeatherRetrieveTask();
+                        task.filePath = path;
+                        task.dateTime = strDateTime;
+                        task.cvParams = com.iok.gfweather.util.StringUtils.convExifDateToCV(ifExif.getAttribute(ExifInterface.TAG_DATETIME));
+                        task.execute();
+
+
+                    }
+
                 }
             }
             return fileInfo;

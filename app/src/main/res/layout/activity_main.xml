@@ -21,11 +21,18 @@
         android:text="start"/>
 
     <Button
+        android:id="@+id/btn_exif_test"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/btn_start"
+        android:text="exif test"/>
+
+    <Button
         android:id="@+id/btn_select_google_drive"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="select google drive folder"
-        android:layout_below="@+id/btn_start"
+        android:layout_below="@+id/btn_exif_test"
         android:layout_alignParentStart="true" />
 
     <TextView

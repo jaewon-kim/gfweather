@@ -24,6 +24,8 @@ public class WallpaperDao extends AbstractDao<Wallpaper, Long> {
     public static class Properties {
         public final static Property Id = new Property(0, Long.class, "id", true, "_id");
         public final static Property Path = new Property(1, String.class, "path", false, "PATH");
+        public final static Property Exifdate = new Property(2, String.class, "exifdate", false, "EXIFDATE");
+        public final static Property Weather = new Property(3, String.class, "weather", false, "WEATHER");
     };
 
 
@@ -40,7 +42,9 @@ public class WallpaperDao extends AbstractDao<Wallpaper, Long> {
         String constraint = ifNotExists? "IF NOT EXISTS ": "";
         db.execSQL("CREATE TABLE " + constraint + "\"WALLPAPER\" (" + //
                 "\"_id\" INTEGER PRIMARY KEY ," + // 0: id
-                "\"PATH\" TEXT);"); // 1: path
+                "\"PATH\" TEXT," + // 1: path
+                "\"EXIFDATE\" TEXT," + // 2: exifdate
+                "\"WEATHER\" TEXT);"); // 3: weather
     }
 
     /** Drops the underlying database table. */
@@ -62,6 +66,16 @@ public class WallpaperDao extends AbstractDao<Wallpaper, Long> {
         if (path != null) {
             stmt.bindString(2, path);
         }
+ 
+        String exifdate = entity.getExifdate();
+        if (exifdate != null) {
+            stmt.bindString(3, exifdate);
+        }
+ 
+        String weather = entity.getWeather();
+        if (weather != null) {
+            stmt.bindString(4, weather);
+        }
     }
 
     @Override
@@ -77,6 +91,16 @@ public class WallpaperDao extends AbstractDao<Wallpaper, Long> {
         if (path != null) {
             stmt.bindString(2, path);
         }
+ 
+        String exifdate = entity.getExifdate();
+        if (exifdate != null) {
+            stmt.bindString(3, exifdate);
+        }
+ 
+        String weather = entity.getWeather();
+        if (weather != null) {
+            stmt.bindString(4, weather);
+        }
     }
 
     @Override
@@ -88,7 +112,9 @@ public class WallpaperDao extends AbstractDao<Wallpaper, Long> {
     public Wallpaper readEntity(Cursor cursor, int offset) {
         Wallpaper entity = new Wallpaper( //
             cursor.isNull(offset + 0) ? null : cursor.getLong(offset + 0), // id
-            cursor.isNull(offset + 1) ? null : cursor.getString(offset + 1) // path
+            cursor.isNull(offset + 1) ? null : cursor.getString(offset + 1), // path
+            cursor.isNull(offset + 2) ? null : cursor.getString(offset + 2), // exifdate
+            cursor.isNull(offset + 3) ? null : cursor.getString(offset + 3) // weather
         );
         return entity;
     }
@@ -97,6 +123,8 @@ public class WallpaperDao extends AbstractDao<Wallpaper, Long> {
     public void readEntity(Cursor cursor, Wallpaper entity, int offset) {
         entity.setId(cursor.isNull(offset + 0) ? null : cursor.getLong(offset + 0));
         entity.setPath(cursor.isNull(offset + 1) ? null : cursor.getString(offset + 1));
+        entity.setExifdate(cursor.isNull(offset + 2) ? null : cursor.getString(offset + 2));
+        entity.setWeather(cursor.isNull(offset + 3) ? null : cursor.getString(offset + 3));
      }
     
     @Override

@@ -12,6 +12,8 @@ public class Wallpaper {
     @Id
     private Long id;
     private String path;
+    private String exifdate;
+    private String weather;
 
     @Generated
     public Wallpaper() {
@@ -22,9 +24,11 @@ public class Wallpaper {
     }
 
     @Generated
-    public Wallpaper(Long id, String path) {
+    public Wallpaper(Long id, String path, String exifdate, String weather) {
         this.id = id;
         this.path = path;
+        this.exifdate = exifdate;
+        this.weather = weather;
     }
 
     public Long getId() {
@@ -41,6 +45,22 @@ public class Wallpaper {
 
     public void setPath(String path) {
         this.path = path;
+    }
+
+    public String getExifdate() {
+        return exifdate;
+    }
+
+    public void setExifdate(String exifdate) {
+        this.exifdate = exifdate;
+    }
+
+    public String getWeather() {
+        return weather;
+    }
+
+    public void setWeather(String weather) {
+        this.weather = weather;
     }
 
 }

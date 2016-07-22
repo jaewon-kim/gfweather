@@ -127,6 +127,13 @@ public class MyService extends Service {
 
 
         List<Wallpaper> wallpapers = mDaoSession.getWallpaperDao().loadAll();
+        for(Wallpaper itemWallpaper: wallpapers){
+            Log.i(TAG,"ITEM::" + itemWallpaper.getId()
+                    + ":::" + itemWallpaper.getPath()
+                    + ":::" + itemWallpaper.getExifdate()
+                    + ":::" + itemWallpaper.getWeather()
+            );
+        }
 
         Log.i(TAG, "Wallpaper Count:::" + wallpapers.size());
 
