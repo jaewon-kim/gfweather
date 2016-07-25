@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
@@ -15,6 +16,7 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
+import android.view.SurfaceHolder;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.RelativeLayout;
@@ -25,6 +27,7 @@ import com.iok.gfweather.db.DaoSession;
 import com.iok.gfweather.db.Wallpaper;
 import com.iok.gfweather.db.WallpaperDao;
 import com.iok.gfweather.receiver.LockScreenReceiver;
+import com.iok.gfweather.view.KeyGuardView;
 
 import org.greenrobot.greendao.database.Database;
 
@@ -37,9 +40,11 @@ public class MyService extends Service {
     private WindowManager.LayoutParams mParams;
     private LayoutInflater mInflater = null;
     private View mLockscreenView = null;
+    private KeyGuardView mKgvOverlay = null;
     RelativeLayout mRlBackground;
     Context mContext = null;
     String TAG = "MyService";
+
 
     DaoSession mDaoSession;
 
@@ -126,6 +131,7 @@ public class MyService extends Service {
         mRlBackground = (RelativeLayout)mLockscreenView.findViewById(R.id.rl_relative_bg);
 
 
+        mKgvOverlay = (KeyGuardView) mLockscreenView.findViewById(R.id.kgv);
         List<Wallpaper> wallpapers = mDaoSession.getWallpaperDao().loadAll();
         for(Wallpaper itemWallpaper: wallpapers){
             Log.i(TAG,"ITEM::" + itemWallpaper.getId()
@@ -156,14 +162,21 @@ public class MyService extends Service {
                         break;
 
                     case MotionEvent.ACTION_MOVE:
-                        Log.d("gWeather", "action move");
+//                        Log.d("gWeather", "action move");
                         float fCurrX = motionEvent.getX();
                         float fCurrY = motionEvent.getY();
+
+
+//                        mKgvOverlay.dispatchTouchEvent(motionEvent);
+
+                        mKgvOverlay.mX = motionEvent.getX();
+                        mKgvOverlay.mY = motionEvent.getY();
+
                         double fDistance = Math.sqrt(
                                 Math.pow(fCurrX - mStartX, 2)
                                 + Math.pow(fCurrY - mStartY , 2)
                         );
-                        Log.d("touch", "distance:::" + fDistance);
+//                        Log.d("touch", "distance:::" + fDistance);
                         if(fDistance > 1000){
 
                             if (null != mWindowManager && null != mLockscreenView) {
@@ -182,11 +195,16 @@ public class MyService extends Service {
                             }
                         }
                         break;
+                    case MotionEvent.ACTION_UP:
+                        mKgvOverlay.mX = -200;
+                        mKgvOverlay.mY = -200;
+                        break;
                 }
                 return true;
             }
         });
 
+//        mLockscreenView.
         mWindowManager.addView(mLockscreenView, mParams);
 
         return START_NOT_STICKY;
