@@ -32,4 +32,16 @@ public class StringUtils {
 
         return cvRtnValue;
     }
+
+    public static String convWeatherKorean(String mainWeather){
+        if("Haze".equalsIgnoreCase(mainWeather) == true){
+            return "흐림";
+        }
+
+        if("Cloud".equalsIgnoreCase(mainWeather) == true){
+            return "흐림";
+        }
+
+        return "";
+    }
 }

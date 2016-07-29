@@ -21,15 +21,18 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.RelativeLayout;
 
+import com.google.api.client.util.StringUtils;
 import com.iok.gfweather.R;
 import com.iok.gfweather.db.DaoMaster;
 import com.iok.gfweather.db.DaoSession;
 import com.iok.gfweather.db.Wallpaper;
 import com.iok.gfweather.db.WallpaperDao;
 import com.iok.gfweather.receiver.LockScreenReceiver;
+import com.iok.gfweather.util.SharedPrefUtil;
 import com.iok.gfweather.view.KeyGuardView;
 
 import org.greenrobot.greendao.database.Database;
+import org.greenrobot.greendao.query.QueryBuilder;
 
 import java.io.File;
 import java.util.List;
@@ -132,7 +135,19 @@ public class MyService extends Service {
 
 
         mKgvOverlay = (KeyGuardView) mLockscreenView.findViewById(R.id.kgv);
-        List<Wallpaper> wallpapers = mDaoSession.getWallpaperDao().loadAll();
+        QueryBuilder qb = mDaoSession.getWallpaperDao().queryBuilder();
+
+//        List<Wallpaper> wallpapers = null;
+
+        String storedWeatherInfo = SharedPrefUtil.getWeatherInfo(mContext);
+
+        Log.i(TAG, "STORED WEATHER INFO::::" + storedWeatherInfo);
+
+        List<Wallpaper> wallpapers = qb.where(WallpaperDao.Properties.Weather.eq(storedWeatherInfo)).list();
+
+        if(wallpapers == null || wallpapers.size() ==0 ) {
+            wallpapers = mDaoSession.getWallpaperDao().loadAll();
+        }
         for(Wallpaper itemWallpaper: wallpapers){
             Log.i(TAG,"ITEM::" + itemWallpaper.getId()
                     + ":::" + itemWallpaper.getPath()

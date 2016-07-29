@@ -25,6 +25,8 @@ import com.iok.gfweather.db.DaoMaster;
 import com.iok.gfweather.db.DaoSession;
 import com.iok.gfweather.db.Wallpaper;
 import com.iok.gfweather.service.MyService;
+import com.iok.gfweather.task.GetCurrentWeatherTask;
+import com.iok.gfweather.util.SharedPrefUtil;
 import com.iok.gfweather.util.WeatherApiHelper;
 
 import android.Manifest;
@@ -37,6 +39,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.SharedPreferences;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.media.ExifInterface;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -68,21 +73,26 @@ import pub.devrel.easypermissions.EasyPermissions;
 public class MainActivity extends Activity
         implements EasyPermissions.PermissionCallbacks ,
         GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener {
+        GoogleApiClient.OnConnectionFailedListener,
+        LocationListener {
 
     private static final String TAG = "gfweather";
 
     GoogleAccountCredential mCredential;
+
     private TextView mOutputText;
     private Button mCallApiButton;
     private Button mStartKeyGuard;
+    private Button mBtnGetCurrentWeather;
 
-    private Button mBtnExifTest;// for Test;;;
+    private boolean isGPSEnabled = false;
+    private boolean isNetworkEnabled = false;
 
-    private String mStrHttpRes; //for Test;
+    LocationManager locationManager;
 
     ProgressDialog mProgress;
     Context mCtx;
+    MainActivity mThis;
 
     private GoogleApiClient mGoogleApiClient;
 
@@ -102,6 +112,7 @@ public class MainActivity extends Activity
 
     private DaoSession mDaoSession = null;
 
+
     /**
      * Create the main activity.
      * @param savedInstanceState previously saved instance data.
@@ -109,8 +120,12 @@ public class MainActivity extends Activity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         mCtx = this;
+        mThis = this;
+
         setContentView(R.layout.activity_main);
+
 
 //        DaoMaster.DevOpenHelper helper = new DaoMaster.DevOpenHelper(this, ENCRYPTED ? "notes-db-encrypted" : "notes-db");
 
@@ -120,6 +135,7 @@ public class MainActivity extends Activity
 
         mDaoSession = new DaoMaster(db).newSession();
 
+        locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
 
         mStartKeyGuard = (Button)findViewById(R.id.btn_start);
         mStartKeyGuard.setOnClickListener(new View.OnClickListener() {
@@ -158,24 +174,51 @@ public class MainActivity extends Activity
             }
         });
 
-        mBtnExifTest = (Button)findViewById(R.id.btn_exif_test);
-
-        mBtnExifTest.setOnClickListener(new View.OnClickListener() {
+//        mBtnExifTest = (Button)findViewById(R.id.btn_exif_test);
+//
+//        mBtnExifTest.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                List<Wallpaper> listWallpaper = mDaoSession.getWallpaperDao().loadAll();
+//                for(Wallpaper item : listWallpaper){
+//                    try{
+//
+//
+//                        return;
+//                    }catch(Exception e){
+//                        e.printStackTrace();
+//                    }
+//                }
+//            }
+//        });
+//
+//
+//
+        mBtnGetCurrentWeather = (Button)findViewById(R.id.btn_get_current_weather);
+        mBtnGetCurrentWeather.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                List<Wallpaper> listWallpaper = mDaoSession.getWallpaperDao().loadAll();
-                for(Wallpaper item : listWallpaper){
-                    try{
+
+                isGPSEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+                //NETWORK_PROVIDER: WI-FI 네트워크나 통신사의 기지국 정보를 통해 위치를 알려줌
+                isNetworkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+
+                if(isGPSEnabled && isNetworkEnabled){
 
 
-                        return;
-                    }catch(Exception e){
-                        e.printStackTrace();
-                    }
+
+                    //선택된 프로바이더를 사용해 위치정보를 업데이트
+                    locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 10, mThis);
+                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 5000, 10, mThis);
                 }
+
+//                Log.i(TAG, "STORED CURR :::"+SharedPrefUtil.getWeatherInfo(mCtx));
+//
+//                GetCurrentWeatherTask taskWeather = new GetCurrentWeatherTask();
+//                taskWeather.mCtx = mCtx;
+//                taskWeather.execute();
             }
         });
-
         mOutputText = (TextView)findViewById(R.id.tv_output_text);
 
         mProgress = new ProgressDialog(this);
@@ -443,6 +486,35 @@ public class MainActivity extends Activity
         } catch (IntentSender.SendIntentException e) {
             Log.e(TAG, "Exception while starting resolution activity", e);
         }
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        Log.i(TAG, "getLatitude:::" + location.getLatitude());
+        Log.i(TAG, "getLongitude:::" + location.getLongitude());
+
+        GetCurrentWeatherTask taskWeather = new GetCurrentWeatherTask();
+
+        taskWeather.mLatitude = location.getLatitude();
+        taskWeather.mLongitude = location.getLongitude();
+        taskWeather.mCtx = mCtx;
+
+        taskWeather.execute();
+    }
+
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+
+    }
+
+    @Override
+    public void onProviderEnabled(String provider) {
+
+    }
+
+    @Override
+    public void onProviderDisabled(String provider) {
+
     }
 
     private class WeatherRetrieveTask extends AsyncTask<Void, Void, Void>{
